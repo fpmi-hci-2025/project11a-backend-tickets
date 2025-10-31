@@ -25,7 +25,39 @@ jobs:
           pip install -e .
       - name: Run tests
         run: pytest -q
+        
+  generate-openapi:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install uvicorn httpx
+
+      - name: Run FastAPI app in background
+        run: |
+          nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          sleep 3
+
+      - name: Download OpenAPI spec
+        run: |
+          curl -sS http://127.0.0.1:8000/openapi.json -o openapi.json
+
+      - name: Upload OpenAPI as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-spec
+          path: openapi.json
+          
   build-and-push:
     needs: test
     runs-on: ubuntu-latest
